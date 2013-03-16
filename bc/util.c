@@ -642,7 +642,7 @@ welcome()
 void
 show_bc_version()
 {
-  printf("%s %s\n%s\n", PACKAGE, VERSION, BC_COPYRIGHT);
+  printf("%s %s with 0xhex and lowercase hex patches\n%s\n", PACKAGE, VERSION, BC_COPYRIGHT);
 }
 
 

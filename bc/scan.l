@@ -59,12 +59,13 @@ _PROTOTYPE(int yywrap, (void));
 /* Have input call the following function. */
 #undef  YY_INPUT
 #define YY_INPUT(buf,result,max_size) \
+    if (cmdline_expression) cmdline_expression += result= string_read(cmdline_expression, buf, max_size); \
+    else \
 		bcel_input((char *)buf, &result, max_size)
 
 /* Variables to help interface editline with bc. */
 static const char *bcel_line = (char *)NULL;
 static int   bcel_len = 0;
-
 
 /* Required to get rid of that ugly ? default prompt! */
 char *
@@ -134,6 +135,8 @@ bcel_input (buf, result, max)
 /* Have input call the following function. */
 #undef  YY_INPUT
 #define YY_INPUT(buf,result,max_size) \
+    if (cmdline_expression) cmdline_expression += result= string_read(cmdline_expression, buf, max_size); \
+    else \
 		rl_input((char *)buf, &result, max_size)
 
 /* Variables to help interface readline with bc. */
@@ -143,7 +146,12 @@ static int   rl_len = 0;
 
 /* Definitions for readline access. */
 extern FILE *rl_instream;
+#if RL_READLINE_VERSION>=0x0403
+// actually since 4.2, but 4.2 does not yet have a version nr defined.
+_PROTOTYPE(char *readline, (CONST char *));
+#else
 _PROTOTYPE(char *readline, (char *));
+#endif
 
 /* rl_input puts upto MAX characters into BUF with the number put in
    BUF placed in *RESULT.  If the yy input file is the same as
@@ -210,14 +218,27 @@ rl_input (buf, result, max)
    does nothing! */
 #undef  YY_INPUT
 #define YY_INPUT(buf,result,max_size) \
+    if (cmdline_expression) cmdline_expression += result= string_read(cmdline_expression, buf, max_size); \
+    else \
 	while ( (result = read( fileno(yyin), (char *) buf, max_size )) < 0 ) \
 	    if (errno != EINTR) \
 		YY_FATAL_ERROR( "read() in flex scanner failed" );
 #endif
 
+int string_read(char *src, char *dst, int max_size)
+{
+  int copied= 0;
+  while (*src && max_size>0) {
+    *dst++ = *src++;
+    copied++;
+    max_size--;
+  }
+  return copied;
+}
+
 %}
-DIGIT [0-9A-F]
-LETTER [a-z]
+DIGIT [0-9A-Fa-f]
+LETTER [g-z]
 %s slcomment
 %%
 "#"		{
@@ -269,7 +290,7 @@ limits return(Limits);
 && { return(AND); }
 \|\| { return(OR); }
 "!" { return(NOT); }
-"*"|"/"|"%" { yylval.c_value = yytext[0]; return((int)yytext[0]); }
+"*"|"/"|"%"|"|"|"~"|"&" { yylval.c_value = yytext[0]; return((int)yytext[0]); }
 "="|\+=|-=|\*=|\/=|%=|\^=  { yylval.c_value = yytext[0]; return(ASSIGN_OP); }
 =\+|=-|=\*|=\/|=%|=\^  { 
 #ifdef OLD_EQ_OP
@@ -287,8 +308,8 @@ limits return(Limits);
 		       }
 ==|\<=|\>=|\!=|"<"|">" { yylval.s_value = strcopyof(yytext); return(REL_OP); }
 \+\+|-- { yylval.c_value = yytext[0]; return(INCR_DECR); }
-"\n" { line_no++; return(ENDOFLINE); }
-\\\n {  line_no++;  /* ignore a "quoted" newline */ }
+(\r\n|\n|\r) { line_no++; return(ENDOFLINE); }
+\\(\r\n|\n|\r) {  line_no++;  /* ignore a "quoted" newline */ }
 [ \t]+  { /* ignore spaces and tabs */ }
 "/*"  {
 	int c;
@@ -311,7 +332,7 @@ limits return(Limits);
 	      }
 	  }
       }
-[a-z][a-z0-9_]* { yylval.s_value = strcopyof(yytext); return(NAME); }
+[g-z][g-z0-9_]* { yylval.s_value = strcopyof(yytext); return(NAME); }
 \"[^\"]*\"  {
  	      unsigned char *look;
 	      int count = 0;
@@ -324,7 +345,7 @@ limits return(Limits);
 	      if (count != 2) yyerror ("NUL character in string.");
 	      return(STRING);
 	    }
-{DIGIT}({DIGIT}|\\\n)*("."({DIGIT}|\\\n)*)?|"."(\\\n)*{DIGIT}({DIGIT}|\\\n)* {
+(0x)?{DIGIT}({DIGIT}|\\\n)*("."({DIGIT}|\\\n)*)?|"."(\\\n)*{DIGIT}({DIGIT}|\\\n)* {
 	      unsigned char *src, *dst;
 	      int len;
 	      /* remove a trailing decimal point. */

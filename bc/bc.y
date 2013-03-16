@@ -79,7 +79,7 @@
 /*     'scale', 'ibase', 'obase', 'auto', 'read' 	*/
 %token <i_value> Scale    Ibase    Obase    Auto  Read
 /*     'warranty', 'halt', 'last', 'continue', 'print', 'limits'   */
-%token <i_value> Warranty, Halt, Last, Continue, Print, Limits
+%token <i_value> Warranty  Halt  Last  Continue  Print  Limits
 /*     'history' */
 %token <i_value> UNARY_MINUS HistoryVar
 
@@ -97,8 +97,8 @@
 %nonassoc NOT
 %left REL_OP
 %right ASSIGN_OP
-%left '+' '-'
-%left '*' '/' '%'
+%left '+' '-' '|'
+%left '*' '/' '%' '&'
 %right '^'
 %nonassoc UNARY_MINUS
 %nonassoc INCR_DECR
@@ -298,6 +298,7 @@ opt_else		: /* nothing */
 			      if_label = $1;
 			    }
 			  opt_newline statement
+			;
 function 		: Define NAME '(' opt_parameter_list ')' opt_newline
      			  '{' required_eol opt_auto_define_list 
 			    {
@@ -424,7 +425,6 @@ expression		:  named_expression ASSIGN_OP
 			      generate (genstr);
 			      $$ = 0;
 			    }
-			;
 			| expression AND 
 			    {
 			      warn("&& operator");
@@ -517,6 +517,26 @@ expression		:  named_expression ASSIGN_OP
 			    {
 			      generate ("^");
 			      $$ = ($1 | $3) & ~4;
+			    }
+			| expression '~' expression
+			    {
+			      generate ("~");
+			      $$ = ($1 | $3) & ~4;
+			    }
+			| expression '&' expression
+			    {
+			      generate ("a");
+			      $$ = ($1 | $3) & ~4;
+			    }
+			| expression '|' expression
+			    {
+			      generate ("o");
+			      $$ = ($1 | $3) & ~4;
+			    }
+			| '~' expression  %prec UNARY_MINUS
+			    {
+			      generate ("z");
+			      $$ = $2 & ~4;
 			    }
 			| '-' expression  %prec UNARY_MINUS
 			    {

@@ -185,13 +185,17 @@ load_code (code)
 		    addbyte (*str++);
 		  }
 		else
-		  if (*str == '.')
+		  if (*str == '.' || *str == 'x')
 		    addbyte (*str++);
 		  else
-		    if (*str >= 'A')
-		      addbyte (*str++ + 10 - 'A');
-		    else
-		      addbyte (*str++ - '0');
+
+                    if ((*str >= 'a') && (*str <='f')) {
+		      addbyte (*str++ + 10 - 'a');
+                    } else if (*str >= 'A') {
+ 		      addbyte (*str++ + 10 - 'A');
+                    } else {
+ 		      addbyte (*str++ - '0');
+                    }
 	      }
 	  }
 	else

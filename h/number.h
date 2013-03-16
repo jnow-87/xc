@@ -125,6 +125,11 @@ _PROTOTYPE(char bc_is_near_zero, (bc_num num, int scale));
 
 _PROTOTYPE(char bc_is_neg, (bc_num num));
 
+_PROTOTYPE(void bc_bitxor, (bc_num n1, bc_num n2, bc_num *result, int scale_min));
+_PROTOTYPE(void bc_bitor, (bc_num n1, bc_num n2, bc_num *result, int scale_min));
+_PROTOTYPE(void bc_bitand, (bc_num n1, bc_num n2, bc_num *result, int scale_min));
+_PROTOTYPE(void bc_bitnot, (bc_num *num, int scale));
+
 _PROTOTYPE(void bc_add, (bc_num n1, bc_num n2, bc_num *result, int scale_min));
 
 _PROTOTYPE(void bc_sub, (bc_num n1, bc_num n2, bc_num *result, int scale_min));
