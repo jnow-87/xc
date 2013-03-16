@@ -63,11 +63,11 @@ s%@INSTALL_SCRIPT@%${INSTALL_PROGRAM}%g
 s%@INSTALL_DATA@%${INSTALL} -m 644%g
 s%@PACKAGE@%bc%g
 s%@VERSION@%1.06%g
-s%@ACLOCAL@%/home/jan/dev/bc-1.06/missing aclocal%g
-s%@AUTOCONF@%/home/jan/dev/bc-1.06/missing autoconf%g
-s%@AUTOMAKE@%/home/jan/dev/bc-1.06/missing automake%g
-s%@AUTOHEADER@%/home/jan/dev/bc-1.06/missing autoheader%g
-s%@MAKEINFO@%/home/jan/dev/bc-1.06/missing makeinfo%g
+s%@ACLOCAL@%/home/jan/dev/bc/bc-1.06/missing aclocal%g
+s%@AUTOCONF@%/home/jan/dev/bc/bc-1.06/missing autoconf%g
+s%@AUTOMAKE@%/home/jan/dev/bc/bc-1.06/missing automake%g
+s%@AUTOHEADER@%/home/jan/dev/bc/bc-1.06/missing autoheader%g
+s%@MAKEINFO@%/home/jan/dev/bc/bc-1.06/missing makeinfo%g
 s%@SET_MAKE@%%g
 s%@CC@%gcc%g
 s%@CPP@%gcc -E%g

@@ -345,7 +345,7 @@ limits return(Limits);
 	      if (count != 2) yyerror ("NUL character in string.");
 	      return(STRING);
 	    }
-(0x)?{DIGIT}({DIGIT}|\\\n)*("."({DIGIT}|\\\n)*)?|"."(\\\n)*{DIGIT}({DIGIT}|\\\n)* {
+(0x)?(0b)?{DIGIT}({DIGIT}|\\\n)*("."({DIGIT}|\\\n)*)?|"."(\\\n)*{DIGIT}({DIGIT}|\\\n)* {
 	      unsigned char *src, *dst;
 	      int len;
 	      /* remove a trailing decimal point. */

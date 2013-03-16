@@ -185,7 +185,7 @@ load_code (code)
 		    addbyte (*str++);
 		  }
 		else
-		  if (*str == '.' || *str == 'x')
+		  if (*str == '.' || *str == 'x' || *str == 'b')
 		    addbyte (*str++);
 		  else
 

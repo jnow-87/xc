@@ -40,10 +40,10 @@ pkgincludedir = $(includedir)/bc
 
 top_builddir = ..
 
-ACLOCAL = /home/jan/dev/bc-1.06/missing aclocal
-AUTOCONF = /home/jan/dev/bc-1.06/missing autoconf
-AUTOMAKE = /home/jan/dev/bc-1.06/missing automake
-AUTOHEADER = /home/jan/dev/bc-1.06/missing autoheader
+ACLOCAL = /home/jan/dev/bc/bc-1.06/missing aclocal
+AUTOCONF = /home/jan/dev/bc/bc-1.06/missing autoconf
+AUTOMAKE = /home/jan/dev/bc/bc-1.06/missing automake
+AUTOHEADER = /home/jan/dev/bc/bc-1.06/missing autoheader
 
 INSTALL = /usr/bin/install -c
 INSTALL_PROGRAM = ${INSTALL} $(AM_INSTALL_PROGRAM_FLAGS)

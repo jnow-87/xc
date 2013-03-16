@@ -38,7 +38,8 @@
 
 int had_sigint;
 
-int output_hex;   /* flag set, when 0xhex value encountered */
+int output_hex,   /* flag set, when 0xhex value encountered */
+	output_bin;
 
 void
 stop_execution (sig)
@@ -196,6 +197,11 @@ execute ()
           const_base= 16;
           byte(&pc);    /* skip hex indicator 'x' */
         }
+		else if(peek(&pc)=='b'){
+			output_bin=1;
+			const_base=2;
+			byte(&pc);
+		}
 	if (const_base == 10)
 	  push_b10_const (&pc);
 	else
@@ -276,6 +282,14 @@ execute ()
 	  out_char ('x');
 	  bc_out_num (ex_stack->s_num, 16, out_char, std_only);
 	  output_hex= 0;
+	}
+
+	if(output_bin){
+	  out_char ('\t');
+	  out_char ('0');
+	  out_char ('b');
+	  bc_out_num (ex_stack->s_num, 2, out_char, std_only);
+	  output_bin= 0;
 	}
 	if (inst == 'W') out_char ('\n');
 	store_var (4);  /* Special variable "last". */
