@@ -278,6 +278,11 @@ execute ()
 	bc_out_num (ex_stack->s_num, o_base, out_char, std_only);
 	if (output_hex) {
 	  out_char ('\t');
+	  if(ex_stack->s_num->n_sign == MINUS){
+	  	out_char('-');
+		ex_stack->s_num->n_sign = PLUS;
+	}
+
 	  out_char ('0');
 	  out_char ('x');
 	  bc_out_num (ex_stack->s_num, 16, out_char, std_only);
@@ -286,6 +291,10 @@ execute ()
 
 	if(output_bin){
 	  out_char ('\t');
+	  if(ex_stack->s_num->n_sign == MINUS){
+	  	out_char('-');
+		ex_stack->s_num->n_sign = PLUS;
+	}
 	  out_char ('0');
 	  out_char ('b');
 	  bc_out_num (ex_stack->s_num, 2, out_char, std_only);
