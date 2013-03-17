@@ -369,7 +369,7 @@ execute ()
 	bc_bitnot (&ex_stack->s_num, 0);
 	break;
 
-      case '~' : /* bitwise xor */
+      case '^' : /* bitwise xor */
 	if (check_stack(2))
 	  {
 	    bc_bitxor (ex_stack->s_next->s_num, ex_stack->s_num, &temp_num, 0);
@@ -528,9 +528,15 @@ execute ()
 	  }
 	break;
 
-      case '^' : /* raise */
+      case '~' : /* raise */
 	if (check_stack(2))
 	  {
+	    bc_bitnot (ex_stack->s_next->s_num, 0);
+	    pop();
+	    pop();
+	    push_num (ex_stack->s_next->s_num);
+	    bc_init_num (&ex_stack->s_next->s_num);
+/*
 	    bc_raise (ex_stack->s_next->s_num,
 		      ex_stack->s_num, &temp_num, scale);
 	    if (bc_is_zero (ex_stack->s_next->s_num) && bc_is_neg (ex_stack->s_num))
@@ -539,7 +545,7 @@ execute ()
 	    pop();
 	    push_num (temp_num);
 	    bc_init_num (&temp_num);
-	  }
+*/	  }
 	break;
 
       case '=' : /* compare equal */

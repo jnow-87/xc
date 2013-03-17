@@ -568,14 +568,15 @@ convert_hex_to_num(bc_num hnum)
 static bc_num
 convert_num_to_hex(bc_num num)
 {
-  bc_num hnum= bc_new_num((num->n_len*100)/121+1, num->n_scale);
 
   bc_num int_part;
   bc_num frac_part;
   bc_num base;
   bc_num cur_dig;
-  int i;
+	bc_num hnum;
+  int i, len;
   int fdigit;
+
 
   bc_init_num (&int_part);
   bc_init_num (&frac_part);
@@ -587,6 +588,34 @@ convert_num_to_hex(bc_num num)
 
   bc_int2num (&base, 16);
 
+	// get length of resulting hnum
+	len = 0;
+  while (!bc_is_zero (int_part)) {
+    bc_modulo (int_part, base, &cur_dig, 0);
+    bc_divide (int_part, base, &int_part, 0);
+
+    len++;
+  }
+
+  i= -1;
+  while (i >= -num->n_scale) {
+    bc_multiply (frac_part, base, &frac_part, num->n_scale);
+    fdigit = bc_num2long (frac_part);
+    bc_int2num (&int_part, fdigit);
+    bc_sub (frac_part, int_part, &frac_part, 0);
+
+	len++;
+
+    i--;
+  }
+
+
+	// alloc hnum
+  hnum= bc_new_num(len, num->n_scale);
+  bc_divide (num, _one_, &int_part, 0);
+  bc_sub (num, int_part, &frac_part, 0);
+
+	// convert number
   i= 0;
   while (!bc_is_zero (int_part)) {
     bc_modulo (int_part, base, &cur_dig, 0);
