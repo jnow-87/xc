@@ -1,0 +1,77 @@
+diff -Nru bc-1.06.orig/bc/load.c bc-1.06/bc/load.c
+--- bc-1.06.orig/bc/load.c	2000-09-13 12:22:38.000000000 -0600
++++ bc-1.06/bc/load.c	2009-08-20 17:35:29.000000000 -0600
+@@ -188,10 +188,13 @@
+ 		  if (*str == '.')
+ 		    addbyte (*str++);
+ 		  else
+-		    if (*str >= 'A')
++                    if ((*str >= 'a') && (*str <='f')) {
++		      addbyte (*str++ + 10 - 'a');
++                    } else if (*str >= 'A') {
+ 		      addbyte (*str++ + 10 - 'A');
+-		    else
++                    } else {
+ 		      addbyte (*str++ - '0');
++                    }
+ 	      }
+ 	  }
+ 	else
+diff -Nru bc-1.06.orig/bc/scan.l bc-1.06/bc/scan.l
+--- bc-1.06.orig/bc/scan.l	2000-09-13 12:25:47.000000000 -0600
++++ bc-1.06/bc/scan.l	2009-08-20 17:35:29.000000000 -0600
+@@ -143,7 +143,7 @@
+ 
+ /* Definitions for readline access. */
+ extern FILE *rl_instream;
+-_PROTOTYPE(char *readline, (char *));
++_PROTOTYPE(char *readline, (const char *));
+ 
+ /* rl_input puts upto MAX characters into BUF with the number put in
+    BUF placed in *RESULT.  If the yy input file is the same as
+@@ -216,8 +216,8 @@
+ #endif
+ 
+ %}
+-DIGIT [0-9A-F]
+-LETTER [a-z]
++DIGIT [0-9A-Fa-f]
++LETTER [g-z]
+ %s slcomment
+ %%
+ "#"		{
+@@ -311,7 +311,7 @@
+ 	      }
+ 	  }
+       }
+-[a-z][a-z0-9_]* { yylval.s_value = strcopyof(yytext); return(NAME); }
++[g-z][g-z0-9_]* { yylval.s_value = strcopyof(yytext); return(NAME); }
+ \"[^\"]*\"  {
+  	      unsigned char *look;
+ 	      int count = 0;
+diff -Nru bc-1.06.orig/bc/storage.c bc-1.06/bc/storage.c
+--- bc-1.06.orig/bc/storage.c	2000-09-13 12:26:15.000000000 -0600
++++ bc-1.06/bc/storage.c	2009-08-20 17:35:29.000000000 -0600
+@@ -55,8 +55,8 @@
+   /* Other things... */
+   ex_stack = NULL;
+   fn_stack = NULL;
+-  i_base = 10;
+-  o_base = 10;
++  i_base = 16;
++  o_base = 16;
+   scale  = 0;
+ #if defined(READLINE) || defined(LIBEDIT)
+   n_history = -1;	
+diff -Nru bc-1.06.orig/bc/util.c bc-1.06/bc/util.c
+--- bc-1.06.orig/bc/util.c	2000-09-13 12:29:19.000000000 -0600
++++ bc-1.06/bc/util.c	2009-08-20 17:34:50.000000000 -0600
+@@ -642,7 +642,7 @@
+ void
+ show_bc_version()
+ {
+-  printf("%s %s\n%s\n", PACKAGE, VERSION, BC_COPYRIGHT);
++  printf("%s %s with friendly hexadecimal hack\n%s\n", PACKAGE, VERSION, BC_COPYRIGHT);
+ }
+ 
+ 

@@ -1,0 +1,770 @@
+diff -dur bc-1.06/ChangeLog bc-1.06-wj/ChangeLog
+--- bc-1.06/ChangeLog	2000-09-28 02:21:04.000000000 +0200
++++ bc-1.06-wj/ChangeLog	2005-06-01 11:34:48.616051200 +0200
+@@ -1,3 +1,12 @@
++Thu Apr 21 13:45:18 2005  Willem Hengeveld <itsme@xs4all.nl>
++	* fixed some warnings and errors in bc.y when compiling with bison
++	* made to work with readline >= 4.3
++	* added bitwise |, &, ~ operators ( or, and, xor )
++	* added support for 0xhexval input, when 0xhexval constants
++	  are found, output is printed in both hex, and decimal.
++	* added '-e' option, to evaluate expression from commandline
++	* does not complain about input with CR's in it.
++
+ Wed Sep 27 17:19:48 2000  Phil Nelson  <phil@cs.wwu.edu>
+ 
+ 	* doc/bc.texi: Added new file. Mainly translated from bc.1
+diff -dur bc-1.06/bc/bc.y bc-1.06-wj/bc/bc.y
+--- bc-1.06/bc/bc.y	2000-09-20 22:26:09.000000000 +0200
++++ bc-1.06-wj/bc/bc.y	2005-06-01 13:16:18.222475200 +0200
+@@ -79,7 +79,7 @@
+ /*     'scale', 'ibase', 'obase', 'auto', 'read' 	*/
+ %token <i_value> Scale    Ibase    Obase    Auto  Read
+ /*     'warranty', 'halt', 'last', 'continue', 'print', 'limits'   */
+-%token <i_value> Warranty, Halt, Last, Continue, Print, Limits
++%token <i_value> Warranty  Halt  Last  Continue  Print  Limits
+ /*     'history' */
+ %token <i_value> UNARY_MINUS HistoryVar
+ 
+@@ -97,8 +97,8 @@
+ %nonassoc NOT
+ %left REL_OP
+ %right ASSIGN_OP
+-%left '+' '-'
+-%left '*' '/' '%'
++%left '+' '-' '|'
++%left '*' '/' '%' '&'
+ %right '^'
+ %nonassoc UNARY_MINUS
+ %nonassoc INCR_DECR
+@@ -298,6 +298,7 @@
+ 			      if_label = $1;
+ 			    }
+ 			  opt_newline statement
++			;
+ function 		: Define NAME '(' opt_parameter_list ')' opt_newline
+      			  '{' required_eol opt_auto_define_list 
+ 			    {
+@@ -424,7 +425,6 @@
+ 			      generate (genstr);
+ 			      $$ = 0;
+ 			    }
+-			;
+ 			| expression AND 
+ 			    {
+ 			      warn("&& operator");
+@@ -518,6 +518,26 @@
+ 			      generate ("^");
+ 			      $$ = ($1 | $3) & ~4;
+ 			    }
++			| expression '~' expression
++			    {
++			      generate ("~");
++			      $$ = ($1 | $3) & ~4;
++			    }
++			| expression '&' expression
++			    {
++			      generate ("a");
++			      $$ = ($1 | $3) & ~4;
++			    }
++			| expression '|' expression
++			    {
++			      generate ("o");
++			      $$ = ($1 | $3) & ~4;
++			    }
++			| '~' expression  %prec UNARY_MINUS
++			    {
++			      generate ("z");
++			      $$ = $2 & ~4;
++			    }
+ 			| '-' expression  %prec UNARY_MINUS
+ 			    {
+ 			      generate ("n");
+diff -dur bc-1.06/bc/execute.c bc-1.06-wj/bc/execute.c
+--- bc-1.06/bc/execute.c	2000-09-13 20:23:41.000000000 +0200
++++ bc-1.06-wj/bc/execute.c	2005-06-01 13:36:19.329582400 +0200
+@@ -38,6 +38,8 @@
+ 
+ int had_sigint;
+ 
++int output_hex;   /* flag set, when 0xhex value encountered */
++
+ void
+ stop_execution (sig)
+      int sig;
+@@ -57,6 +59,13 @@
+   return (functions[pc->pc_func].f_body[pc->pc_addr++]);
+ }
+ 
++unsigned char
++peek (pc)
++     program_counter *pc;
++{
++  return (functions[pc->pc_func].f_body[pc->pc_addr]);
++}
++
+ 
+ /* The routine that actually runs the machine. */
+ 
+@@ -182,6 +191,11 @@
+ 	  const_base = i_base;
+ 	else
+ 	  const_base = fn_stack->s_val;
++        if (peek(&pc)=='x') {
++          output_hex= 1;
++          const_base= 16;
++          byte(&pc);    /* skip hex indicator 'x' */
++        }
+ 	if (const_base == 10)
+ 	  push_b10_const (&pc);
+ 	else
+@@ -256,6 +270,13 @@
+       case 'W' : /* Write the value on the top of the stack. */
+       case 'P' : /* Write the value on the top of the stack.  No newline. */
+ 	bc_out_num (ex_stack->s_num, o_base, out_char, std_only);
++	if (output_hex) {
++	  out_char ('\t');
++	  out_char ('0');
++	  out_char ('x');
++	  bc_out_num (ex_stack->s_num, 16, out_char, std_only);
++	  output_hex= 0;
++	}
+ 	if (inst == 'W') out_char ('\n');
+ 	store_var (4);  /* Special variable "last". */
+ 	fflush (stdout);
+@@ -321,6 +342,45 @@
+ 	bc_sub (_zero_, ex_stack->s_num, &ex_stack->s_num, 0);
+ 	break;
+ 
++      case 'z' : /* bitwise Negate top of stack. */
++	bc_bitnot (&ex_stack->s_num, 0);
++	break;
++
++      case '~' : /* bitwise xor */
++	if (check_stack(2))
++	  {
++	    bc_bitxor (ex_stack->s_next->s_num, ex_stack->s_num, &temp_num, 0);
++	    pop();
++	    pop();
++	    push_num (temp_num);
++	    bc_init_num (&temp_num);
++	  }
++
++	break;
++
++      case 'a' : /* bitwise and */
++	if (check_stack(2))
++	  {
++	    bc_bitand (ex_stack->s_next->s_num, ex_stack->s_num, &temp_num, 0);
++	    pop();
++	    pop();
++	    push_num (temp_num);
++	    bc_init_num (&temp_num);
++	  }
++
++	break;
++
++      case 'o' : /* bitwise or. */
++	if (check_stack(2))
++	  {
++	    bc_bitor (ex_stack->s_next->s_num, ex_stack->s_num, &temp_num, 0);
++	    pop();
++	    pop();
++	    push_num (temp_num);
++	    bc_init_num (&temp_num);
++	  }
++	break;
++
+       case 'p' : /* Pop the execution stack. */
+ 	pop ();
+ 	break;
+@@ -358,7 +418,7 @@
+ 	assign (c_code);
+ 	break;
+ 
+-      case '&' : /* compare greater than */
++      case '&' : /* logical and */
+ 	if (check_stack(2))
+ 	  {
+ 	    c_code = !bc_is_zero (ex_stack->s_next->s_num)
+@@ -368,7 +428,7 @@
+ 	  }
+ 	break;
+ 
+-      case '|' : /* compare greater than */
++      case '|' : /* logical or */
+ 	if (check_stack(2))
+ 	  {
+ 	    c_code = !bc_is_zero (ex_stack->s_next->s_num)
+diff -dur bc-1.06/bc/global.h bc-1.06-wj/bc/global.h
+--- bc-1.06/bc/global.h	2000-09-13 20:24:05.000000000 +0200
++++ bc-1.06-wj/bc/global.h	2005-04-21 12:07:20.390711200 +0200
+@@ -72,6 +72,12 @@
+ /* The list of file names to process. */
+ EXTERN file_node *file_names;
+ 
++/* Is this run a command line expression eval? */
++EXTERN char eval_expression;
++
++/* The commandline specified expression. */
++EXTERN char *cmdline_expression;
++
+ /* The name of the current file being processed. */
+ EXTERN char *file_name;
+ 
+diff -dur bc-1.06/bc/load.c bc-1.06-wj/bc/load.c
+--- bc-1.06/bc/load.c	2000-09-13 20:22:38.000000000 +0200
++++ bc-1.06-wj/bc/load.c	2005-06-01 13:36:59.267009600 +0200
+@@ -185,7 +185,7 @@
+ 		    addbyte (*str++);
+ 		  }
+ 		else
+-		  if (*str == '.')
++		  if (*str == '.' || *str == 'x')
+ 		    addbyte (*str++);
+ 		  else
+ 		    if (*str >= 'A')
+diff -dur bc-1.06/bc/main.c bc-1.06-wj/bc/main.c
+--- bc-1.06/bc/main.c	2000-09-13 20:24:52.000000000 +0200
++++ bc-1.06-wj/bc/main.c	2005-04-21 12:38:42.416932000 +0200
+@@ -47,6 +47,7 @@
+   {"compile",  0, &compile_only, TRUE},
+   {"help",     0, 0,             'h'},
+   {"interactive", 0, 0,          'i'},
++  {"expression", 0, 0,           'e'},
+   {"mathlib",  0, &use_math,     TRUE},
+   {"quiet",    0, &quiet,        TRUE},
+   {"standard", 0, &std_only,     TRUE},
+@@ -60,8 +61,9 @@
+ void
+ usage (char *progname)
+ {
+-  printf ("usage: %s [options] [file ...]\n%s%s%s%s%s%s%s", progname,
++  printf ("usage: %s [options] [file ...]\n%s%s%s%s%s%s%s%s", progname,
+           "  -h  --help         print this usage and exit\n",
++	  "  -e  --expression   eval commandline expression\n",
+ 	  "  -i  --interactive  force interactive mode\n",
+ 	  "  -l  --mathlib      use the predefine math routnes\n",
+ 	  "  -q  --quiet        don't print initial banner\n",
+@@ -79,6 +81,8 @@
+   int optch;
+   int long_index;
+   file_node *temp;
++  int i;
++  int size;
+ 
+   /* Force getopt to initialize.  Depends on GNU getopt. */
+   optind = 0;
+@@ -86,7 +90,7 @@
+   /* Parse the command line */
+   while (1)
+     {
+-      optch = getopt_long (argc, argv, "chilqswv", long_options, &long_index);
++      optch = getopt_long (argc, argv, "chilqswve", long_options, &long_index);
+ 
+       if (optch == EOF)  /* End of arguments. */
+ 	break;
+@@ -106,6 +110,11 @@
+ 	  interactive = TRUE;
+ 	  break;
+ 
++	case 'e':  /* commandline expression */
++	  eval_expression = TRUE;
++      interactive = FALSE;
++	  break;
++
+ 	case 'l':  /* math lib */
+ 	  use_math = TRUE;
+ 	  break;
+@@ -133,6 +142,21 @@
+ 	}
+     }
+ 
++  if (eval_expression) {
++    size= argc+1;
++    for (i=optind ; i<argc ; i++)
++      size += strlen(argv[i]);
++    cmdline_expression= bc_malloc(size);
++    cmdline_expression[0]=0;
++    for (i=optind ; i<argc ; i++) {
++      if (i)
++        strcat(cmdline_expression, " ");
++      strcat(cmdline_expression, argv[i]);
++    }
++    strcat(cmdline_expression, "\n");
++
++    return;
++  }
+   /* Add file names to a list of files to process. */
+   while (optind < argc)
+     {
+diff -dur bc-1.06/bc/scan.l bc-1.06-wj/bc/scan.l
+--- bc-1.06/bc/scan.l	2000-09-13 20:25:47.000000000 +0200
++++ bc-1.06-wj/bc/scan.l	2005-06-01 11:28:41.287859200 +0200
+@@ -59,13 +59,14 @@
+ /* Have input call the following function. */
+ #undef  YY_INPUT
+ #define YY_INPUT(buf,result,max_size) \
++    if (cmdline_expression) cmdline_expression += result= string_read(cmdline_expression, buf, max_size); \
++    else \
+ 		bcel_input((char *)buf, &result, max_size)
+ 
+ /* Variables to help interface editline with bc. */
+ static const char *bcel_line = (char *)NULL;
+ static int   bcel_len = 0;
+ 
+-
+ /* Required to get rid of that ugly ? default prompt! */
+ char *
+ null_prompt (EditLine *el)
+@@ -134,6 +135,8 @@
+ /* Have input call the following function. */
+ #undef  YY_INPUT
+ #define YY_INPUT(buf,result,max_size) \
++    if (cmdline_expression) cmdline_expression += result= string_read(cmdline_expression, buf, max_size); \
++    else \
+ 		rl_input((char *)buf, &result, max_size)
+ 
+ /* Variables to help interface readline with bc. */
+@@ -143,7 +146,12 @@
+ 
+ /* Definitions for readline access. */
+ extern FILE *rl_instream;
++#if RL_READLINE_VERSION>=0x0403
++// actually since 4.2, but 4.2 does not yet have a version nr defined.
++_PROTOTYPE(char *readline, (CONST char *));
++#else
+ _PROTOTYPE(char *readline, (char *));
++#endif
+ 
+ /* rl_input puts upto MAX characters into BUF with the number put in
+    BUF placed in *RESULT.  If the yy input file is the same as
+@@ -210,11 +218,24 @@
+    does nothing! */
+ #undef  YY_INPUT
+ #define YY_INPUT(buf,result,max_size) \
++    if (cmdline_expression) cmdline_expression += result= string_read(cmdline_expression, buf, max_size); \
++    else \
+ 	while ( (result = read( fileno(yyin), (char *) buf, max_size )) < 0 ) \
+ 	    if (errno != EINTR) \
+ 		YY_FATAL_ERROR( "read() in flex scanner failed" );
+ #endif
+ 
++int string_read(char *src, char *dst, int max_size)
++{
++  int copied= 0;
++  while (*src && max_size>0) {
++    *dst++ = *src++;
++    copied++;
++    max_size--;
++  }
++  return copied;
++}
++
+ %}
+ DIGIT [0-9A-F]
+ LETTER [a-z]
+@@ -269,7 +290,7 @@
+ && { return(AND); }
+ \|\| { return(OR); }
+ "!" { return(NOT); }
+-"*"|"/"|"%" { yylval.c_value = yytext[0]; return((int)yytext[0]); }
++"*"|"/"|"%"|"|"|"~"|"&" { yylval.c_value = yytext[0]; return((int)yytext[0]); }
+ "="|\+=|-=|\*=|\/=|%=|\^=  { yylval.c_value = yytext[0]; return(ASSIGN_OP); }
+ =\+|=-|=\*|=\/|=%|=\^  { 
+ #ifdef OLD_EQ_OP
+@@ -287,8 +308,8 @@
+ 		       }
+ ==|\<=|\>=|\!=|"<"|">" { yylval.s_value = strcopyof(yytext); return(REL_OP); }
+ \+\+|-- { yylval.c_value = yytext[0]; return(INCR_DECR); }
+-"\n" { line_no++; return(ENDOFLINE); }
+-\\\n {  line_no++;  /* ignore a "quoted" newline */ }
++(\r\n|\n|\r) { line_no++; return(ENDOFLINE); }
++\\(\r\n|\n|\r) {  line_no++;  /* ignore a "quoted" newline */ }
+ [ \t]+  { /* ignore spaces and tabs */ }
+ "/*"  {
+ 	int c;
+@@ -324,7 +345,7 @@
+ 	      if (count != 2) yyerror ("NUL character in string.");
+ 	      return(STRING);
+ 	    }
+-{DIGIT}({DIGIT}|\\\n)*("."({DIGIT}|\\\n)*)?|"."(\\\n)*{DIGIT}({DIGIT}|\\\n)* {
++(0x)?{DIGIT}({DIGIT}|\\\n)*("."({DIGIT}|\\\n)*)?|"."(\\\n)*{DIGIT}({DIGIT}|\\\n)* {
+ 	      unsigned char *src, *dst;
+ 	      int len;
+ 	      /* remove a trailing decimal point. */
+diff -dur bc-1.06/h/number.h bc-1.06-wj/h/number.h
+--- bc-1.06/h/number.h	2000-10-03 20:34:25.000000000 +0200
++++ bc-1.06-wj/h/number.h	2005-04-21 12:50:12.399077600 +0200
+@@ -125,6 +125,11 @@
+ 
+ _PROTOTYPE(char bc_is_neg, (bc_num num));
+ 
++_PROTOTYPE(void bc_bitxor, (bc_num n1, bc_num n2, bc_num *result, int scale_min));
++_PROTOTYPE(void bc_bitor, (bc_num n1, bc_num n2, bc_num *result, int scale_min));
++_PROTOTYPE(void bc_bitand, (bc_num n1, bc_num n2, bc_num *result, int scale_min));
++_PROTOTYPE(void bc_bitnot, (bc_num *num, int scale));
++
+ _PROTOTYPE(void bc_add, (bc_num n1, bc_num n2, bc_num *result, int scale_min));
+ 
+ _PROTOTYPE(void bc_sub, (bc_num n1, bc_num n2, bc_num *result, int scale_min));
+diff -dur bc-1.06/lib/number.c bc-1.06-wj/lib/number.c
+--- bc-1.06/lib/number.c	2000-10-03 20:34:25.000000000 +0200
++++ bc-1.06-wj/lib/number.c	2005-06-01 13:36:32.438432000 +0200
+@@ -520,6 +520,262 @@
+   return diff;
+ }
+ 
++static bc_num
++convert_hex_to_num(bc_num hnum)
++{
++  bc_num num;
++  bc_num int_part;
++  bc_num frac_part;
++  bc_num digit;
++  bc_num divisor;
++  bc_num base;
++  bc_num temp;
++  int i;
++
++  bc_init_num (&num);
++  bc_init_num (&base);
++  bc_init_num (&digit);
++  bc_init_num (&temp);
++  bc_init_num (&int_part);
++  bc_init_num (&frac_part);
++  bc_init_num (&divisor);
++
++  bc_int2num (&base, 16);
++  for (i=0 ; i<hnum->n_len ; i++) {
++    bc_multiply (int_part, base, &temp, 0);
++    bc_int2num (&digit, hnum->n_value[i] & 0xf);
++    bc_add (temp, digit, &int_part, 0);
++  }
++  divisor= bc_copy_num(_one_);
++  for (i=0 ; i<hnum->n_scale ; i++) {
++    bc_multiply (frac_part, base, &temp, 0);
++    bc_int2num (&digit, hnum->n_value[hnum->n_len+i] & 0xf);
++    bc_add (temp, digit, &frac_part, 0);
++    bc_multiply (divisor, base, &divisor, 0);
++  }
++  bc_divide (frac_part, divisor, &frac_part, hnum->n_scale);
++  bc_add (frac_part, int_part, &num, hnum->n_scale);
++
++  bc_free_num (&temp);
++  bc_free_num (&base);
++  bc_free_num (&digit);
++  bc_free_num (&int_part);
++  bc_free_num (&frac_part);
++  bc_free_num (&divisor);
++  return num;
++}
++
++static bc_num
++convert_num_to_hex(bc_num num)
++{
++  bc_num hnum= bc_new_num((num->n_len*100)/121+1, num->n_scale);
++
++  bc_num int_part;
++  bc_num frac_part;
++  bc_num base;
++  bc_num cur_dig;
++  int i;
++  int fdigit;
++
++  bc_init_num (&int_part);
++  bc_init_num (&frac_part);
++  bc_init_num (&cur_dig);
++  bc_init_num (&base);
++
++  bc_divide (num, _one_, &int_part, 0);
++  bc_sub (num, int_part, &frac_part, 0);
++
++  bc_int2num (&base, 16);
++
++  i= 0;
++  while (!bc_is_zero (int_part)) {
++    bc_modulo (int_part, base, &cur_dig, 0);
++    hnum->n_value[hnum->n_len-i-1]= bc_num2long (cur_dig);
++    bc_divide (int_part, base, &int_part, 0);
++
++    i++;
++  }
++  i= -1;
++  while (i >= -hnum->n_scale) {
++    bc_multiply (frac_part, base, &frac_part, num->n_scale);
++    fdigit = bc_num2long (frac_part);
++    bc_int2num (&int_part, fdigit);
++    bc_sub (frac_part, int_part, &frac_part, 0);
++
++    hnum->n_value[hnum->n_len-i-1]= fdigit;
++
++    i--;
++  }
++
++  return hnum;
++}
++
++static bc_num
++_bc_do_bitnot (num, scale_min)
++     bc_num num;
++     int scale_min;
++{
++  bc_num not;
++  bc_num hexval;
++  int i;
++
++  hexval= convert_num_to_hex(num);
++
++  for (i=hexval->n_len-1 ; i>= -hexval->n_scale ; i--)
++    hexval->n_value[hexval->n_len-1-i] = hexval->n_value[hexval->n_len-1-i] ^ 0xf;
++
++  not= convert_hex_to_num(hexval);
++
++  bc_free_num (&hexval);
++
++  /* Adjust xor xor return. */
++  _bc_rm_leading_zeros (not);
++  return not;
++}
++
++static bc_num
++_bc_do_bitxor (n1, n2, scale_min)
++     bc_num n1, n2;
++     int scale_min;
++{
++  bc_num xor;
++  int i;
++
++  bc_num hexn1;
++  bc_num hexn2;
++  bc_num hexxor;
++
++  hexn1= convert_num_to_hex(n1);
++  hexn2= convert_num_to_hex(n2);
++  hexxor= bc_new_num(MAX(hexn1->n_len, hexn2->n_len), MAX(hexn1->n_scale, hexn2->n_scale));
++
++
++  // i is the position ( i==0 <-> position base^0 )
++  //   positive values len-1 .. 0   for integer 
++  //   negative values -1 .. -scale   for fractional
++
++  // copy longer part of n1 or n2
++  if ( hexn1->n_len > hexn2->n_len ) {
++    for (i=hexn1->n_len-1 ; i>=hexn2->n_len ; i--)
++      hexxor->n_value[hexxor->n_len-i-1] = hexn1->n_value[hexn1->n_len-i-1];
++  }
++  else if ( hexn2->n_len > hexn1->n_len ) {
++    for (i=hexn2->n_len-1 ; i>=hexn1->n_len ; i--)
++      hexxor->n_value[hexxor->n_len-i-1] = hexn2->n_value[hexn2->n_len-i-1];
++  }
++
++  // copy length+scale part
++  for (i=MIN(hexn1->n_len, hexn2->n_len)-1 ; i >= -MIN(hexn1->n_scale, hexn2->n_scale) ; i--)
++    hexxor->n_value[hexxor->n_len-i-1] = hexn1->n_value[hexn1->n_len-i-1] ^ hexn2->n_value[hexn2->n_len-i-1];
++
++  if ( hexn1->n_scale > hexn2->n_scale ) {
++    for (i=-hexn2->n_scale-1 ; i >= -hexn1->n_scale ; i--)
++      hexxor->n_value[hexxor->n_len-i-1] = hexn1->n_value[hexn1->n_len-i-1];
++  }
++  else if ( hexn2->n_scale > hexn1->n_scale ) {
++    for (i=-hexn1->n_scale-1 ; i >= -hexn2->n_scale ; i--)
++      hexxor->n_value[hexxor->n_len-i-1] = hexn2->n_value[hexn2->n_len-i-1];
++  }
++
++
++  xor= convert_hex_to_num(hexxor);
++
++  bc_free_num (&hexn1);
++  bc_free_num (&hexn2);
++  bc_free_num (&hexxor);
++
++  /* Adjust xor xor return. */
++  _bc_rm_leading_zeros (xor);
++  return xor;
++}
++
++static bc_num
++_bc_do_bitor (n1, n2, scale_min)
++     bc_num n1, n2;
++     int scale_min;
++{
++  bc_num or;
++  int i;
++
++  bc_num hexn1;
++  bc_num hexn2;
++  bc_num hexor;
++
++  hexn1= convert_num_to_hex(n1);
++  hexn2= convert_num_to_hex(n2);
++  hexor= bc_new_num(MAX(hexn1->n_len, hexn2->n_len), MAX(hexn1->n_scale, hexn2->n_scale));
++
++  // i is the position ( i==0 <-> position base^0 )
++  //   positive values len-1 .. 0   for integer 
++  //   negative values -1 .. -scale   for fractional
++
++  // copy longer part of n1 or n2
++  if ( hexn1->n_len > hexn2->n_len ) {
++    for (i=hexn1->n_len-1 ; i>=hexn2->n_len ; i--)
++      hexor->n_value[hexor->n_len-i-1] = hexn1->n_value[hexn1->n_len-i-1];
++  }
++  else if ( hexn2->n_len > hexn1->n_len ) {
++    for (i=hexn2->n_len-1 ; i>=hexn1->n_len ; i--)
++      hexor->n_value[hexor->n_len-i-1] = hexn2->n_value[hexn2->n_len-i-1];
++  }
++
++  // copy length+scale part
++  for (i=MIN(hexn1->n_len, hexn2->n_len)-1 ; i >= -MIN(hexn1->n_scale, hexn2->n_scale) ; i--)
++    hexor->n_value[hexor->n_len-i-1] = hexn1->n_value[hexn1->n_len-i-1] | hexn2->n_value[hexn2->n_len-i-1];
++
++  if ( hexn1->n_scale > hexn2->n_scale ) {
++    for (i=-hexn2->n_scale-1 ; i >= -hexn1->n_scale ; i--)
++      hexor->n_value[hexor->n_len-i-1] = hexn1->n_value[hexn1->n_len-i-1];
++  }
++  else if ( hexn2->n_scale > hexn1->n_scale ) {
++    for (i=-hexn1->n_scale-1 ; i >= -hexn2->n_scale ; i--)
++      hexor->n_value[hexor->n_len-i-1] = hexn2->n_value[hexn2->n_len-i-1];
++  }
++
++
++  or= convert_hex_to_num(hexor);
++
++  bc_free_num (&hexn1);
++  bc_free_num (&hexn2);
++  bc_free_num (&hexor);
++
++  /* Adjust or or return. */
++  _bc_rm_leading_zeros (or);
++  return or;
++}
++
++static bc_num
++_bc_do_bitand (n1, n2, scale_min)
++     bc_num n1, n2;
++     int scale_min;
++{
++  bc_num and;
++
++  bc_num hexn1;
++  bc_num hexn2;
++  bc_num hexand;
++  int i;
++
++  hexn1= convert_num_to_hex(n1);
++  hexn2= convert_num_to_hex(n2);
++  hexand= bc_new_num(MIN(hexn1->n_len, hexn2->n_len), MIN(hexn1->n_scale, hexn2->n_scale));
++
++  // copy length+scale part
++  for (i=MIN(hexn1->n_len, hexn2->n_len)-1 ; i >= -MIN(hexn1->n_scale, hexn2->n_scale) ; i--)
++    hexand->n_value[hexand->n_len-i-1] = hexn1->n_value[hexn1->n_len-i-1] & hexn2->n_value[hexn2->n_len-i-1];
++
++
++  and= convert_hex_to_num(hexand);
++
++  bc_free_num (&hexn1);
++  bc_free_num (&hexn2);
++  bc_free_num (&hexand);
++
++  /* Adjust and and return. */
++  _bc_rm_leading_zeros (and);
++  return and;
++}
++
+ 
+ /* Here is the full subtract routine that takes care of negative numbers.
+    N2 is subtracted from N1 and the result placed in RESULT.  SCALE_MIN
+@@ -570,7 +826,6 @@
+   *result = diff;
+ }
+ 
+-
+ /* Here is the full add routine that takes care of negative numbers.
+    N1 is added to N2 and the result placed into RESULT.  SCALE_MIN
+    is the minimum scale for the result. */
+@@ -618,6 +873,85 @@
+   *result = sum;
+ }
+ 
++void
++bc_bitnot (num, scale)
++     bc_num *num;
++     int scale;
++{
++  bc_num not = NULL;
++
++  not = _bc_do_bitnot (*num, scale);
++  bc_free_num (num);
++
++  *num= not;
++}
++
++void
++bc_bitxor (n1, n2, result, scale_min)
++     bc_num n1, n2, *result;
++     int scale_min;
++{
++  bc_num xor = NULL;
++
++  if (n1->n_sign == n2->n_sign)
++    {
++      xor = _bc_do_bitxor (n1, n2, scale_min);
++      xor->n_sign = n1->n_sign;
++    }
++  else
++    {
++      // not implemented
++    }
++
++  /* Clean up and return. */
++  bc_free_num (result);
++  *result = xor;
++}
++
++void
++bc_bitor (n1, n2, result, scale_min)
++     bc_num n1, n2, *result;
++     int scale_min;
++{
++  bc_num or = NULL;
++
++  if (n1->n_sign == n2->n_sign)
++    {
++      or = _bc_do_bitor (n1, n2, scale_min);
++      or->n_sign = n1->n_sign;
++    }
++  else
++    {
++      // not implemented
++    }
++
++  /* Clean up and return. */
++  bc_free_num (result);
++  *result = or;
++}
++void
++bc_bitand (n1, n2, result, scale_min)
++     bc_num n1, n2, *result;
++     int scale_min;
++{
++  bc_num and = NULL;
++
++  if (n1->n_sign == n2->n_sign)
++    {
++      and = _bc_do_bitand (n1, n2, scale_min);
++      and->n_sign = n1->n_sign;
++    }
++  else
++    {
++      // not implemented
++    }
++
++  /* Clean up and return. */
++  bc_free_num (result);
++  *result = and;
++}
++
++
+ /* Recursive vs non-recursive multiply crossover ranges. */
+ #if defined(MULDIGITS)
+ #include "muldigits.h"
