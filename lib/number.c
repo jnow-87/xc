@@ -1779,7 +1779,7 @@ typedef struct stk_rec {
 } stk_rec;
 
 /* The reference string for digits. */
-static char ref_str[] = "0123456789ABCDEF";
+static char ref_str[] = "0123456789abcdef";
 
 
 /* A special output routine for "multi-character digits."  Exactly
@@ -1833,7 +1833,6 @@ bc_out_num (num, o_base, out_char, leading_zero)
 
   /* The negative sign if needed. */
   if (num->n_sign == MINUS) (*out_char) ('-');
-
   /* Output the number. */
   if (bc_is_zero (num))
     (*out_char) ('0');
@@ -1892,7 +1891,6 @@ bc_out_num (num, o_base, out_char, leading_zero)
 	    digits = temp;
 	    bc_divide (int_part, base, &int_part, 0);
 	  }
-
 	/* Print the digits on the stack. */
 	if (digits != NULL)
 	  {
@@ -1901,14 +1899,15 @@ bc_out_num (num, o_base, out_char, leading_zero)
 	      {
 		temp = digits;
 		digits = digits->next;
+
 		if (o_base <= 16)
 		  (*out_char) (ref_str[ (int) temp->digit]);
 		else
 		  bc_out_long (temp->digit, max_o_digit->n_len, 1, out_char);
+
 		free (temp);
 	      }
 	  }
-
 	/* Get and print the digits of the fraction part. */
 	if (num->n_scale > 0)
 	  {
