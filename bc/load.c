@@ -60,7 +60,6 @@ addbyte (byte)
 
   /* If there was an error, don't continue. */
   if (had_error) return;
-
   /* Calculate the segment and offset. */
   pc = load_adr.pc_addr++;
   f = &functions[load_adr.pc_func];
@@ -160,7 +159,6 @@ load_code (code)
 
   /* Initialize. */
   str = code;
-   
   /* Scan the code. */
   while (*str != 0)
     {
@@ -185,7 +183,7 @@ load_code (code)
 		    addbyte (*str++);
 		  }
 		else
-		  if (*str == '.' || *str == 'x' || *str == 'b')
+		  if (*str == '.' || *str == 'x' || (*str == 'b' && str - code == 0))
 		    addbyte (*str++);
 		  else
 
