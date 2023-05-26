@@ -25,9 +25,11 @@
                 Computer Science Department, 9062
                 Western Washington University
                 Bellingham, WA 98226-9062
-       
+
 *************************************************************************/
 
+#ifndef GLOBAL_H
+#define GLOBAL_H
 
 /* The current break level's lable. */
 EXTERN int break_label;
@@ -119,9 +121,9 @@ EXTERN int n_history;
 
 #if defined(LIBEDIT)
 /* LIBEDIT data */
-EditLine *edit;
-History  *hist;
-HistEvent histev;
+static EditLine *edit;
+static History  *hist;
+static HistEvent histev;
 #endif
 
 /* "Condition code" -- false (0) or true (1) */
@@ -158,3 +160,6 @@ extern int optind;
 
 /* Access to the yy input file.  Defined in scan.c. */
 extern FILE *yyin;
+
+
+#endif // GLOBAL_H

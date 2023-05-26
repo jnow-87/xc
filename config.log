@@ -12,6 +12,9 @@ configure:771: checking for working makeinfo
 configure:804: checking for gcc
 configure:917: checking whether the C compiler (gcc  ) works
 configure:933: gcc -o conftest    conftest.c  1>&5
+configure:930:1: warning: return type defaults to 'int' [-Wimplicit-int]
+  930 | main(){return(0);}
+      | ^~~~
 configure:959: checking whether the C compiler (gcc  ) is a cross-compiler
 configure:964: checking whether we are using GNU C
 configure:992: checking whether gcc accepts -g
@@ -40,6 +43,9 @@ configure:1739: checking for ptrdiff_t
 configure:1773: checking for vprintf
 configure:1880: checking for isgraph
 configure:1880: checking for setvbuf
-configure:1950: checking for tgetent in -ltermcap
-configure:1992: checking for el_gets in -ledit
-configure:2028: checking for histedit.h
+configure:2082: checking for tparm in -lncurses
+configure:2101: gcc -o conftest -g -O2   conftest.c -lncurses   1>&5
+configure:2164: checking for readline in -lreadline
+configure:2183: gcc -o conftest -g -O2   -lncurses conftest.c -lreadline   1>&5
+configure:2200: checking for readline/readline.h
+configure:2210: gcc -E  conftest.c >/dev/null 2>conftest.out

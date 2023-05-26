@@ -20,6 +20,7 @@ ac_cv_header_histedit_h=${ac_cv_header_histedit_h='yes'}
 ac_cv_header_lib_h=${ac_cv_header_lib_h='no'}
 ac_cv_header_limits_h=${ac_cv_header_limits_h='yes'}
 ac_cv_header_minix_config_h=${ac_cv_header_minix_config_h='no'}
+ac_cv_header_readline_readline_h=${ac_cv_header_readline_readline_h='yes'}
 ac_cv_header_stdarg_h=${ac_cv_header_stdarg_h='yes'}
 ac_cv_header_stdc=${ac_cv_header_stdc='yes'}
 ac_cv_header_stddef_h=${ac_cv_header_stddef_h='yes'}
@@ -28,6 +29,8 @@ ac_cv_header_string_h=${ac_cv_header_string_h='yes'}
 ac_cv_header_unistd_h=${ac_cv_header_unistd_h='yes'}
 ac_cv_lib_edit_el_gets=${ac_cv_lib_edit_el_gets='yes'}
 ac_cv_lib_fl_yywrap=${ac_cv_lib_fl_yywrap='yes'}
+ac_cv_lib_ncurses_tparm=${ac_cv_lib_ncurses_tparm='yes'}
+ac_cv_lib_readline_readline=${ac_cv_lib_readline_readline='yes'}
 ac_cv_lib_termcap_tgetent=${ac_cv_lib_termcap_tgetent='yes'}
 ac_cv_path_install=${ac_cv_path_install='/usr/bin/install -c'}
 ac_cv_prog_CC=${ac_cv_prog_CC='gcc'}

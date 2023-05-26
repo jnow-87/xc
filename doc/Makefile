@@ -40,10 +40,10 @@ pkgincludedir = $(includedir)/bc
 
 top_builddir = ..
 
-ACLOCAL = /home/jan/dev/bc/bc-1.06/missing aclocal
-AUTOCONF = /home/jan/dev/bc/bc-1.06/missing autoconf
-AUTOMAKE = /home/jan/dev/bc/bc-1.06/missing automake
-AUTOHEADER = /home/jan/dev/bc/bc-1.06/missing autoheader
+ACLOCAL = aclocal
+AUTOCONF = autoconf
+AUTOMAKE = automake
+AUTOHEADER = autoheader
 
 INSTALL = /usr/bin/install -c
 INSTALL_PROGRAM = ${INSTALL} $(AM_INSTALL_PROGRAM_FLAGS)
@@ -61,7 +61,7 @@ CC = gcc
 LEX = flex -I8
 PACKAGE = bc
 RANLIB = ranlib
-READLINELIB = -ledit -ltermcap
+READLINELIB = -lreadline -lncurses
 VERSION = 1.06
 YACC = bison -y
 
