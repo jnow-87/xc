@@ -1,1 +1,4 @@
 *.o
+/bc/bc
+/dc/dc
+/lib/libbc.a
