@@ -30,6 +30,7 @@
 
 #include "bcdefs.h"
 #include <signal.h>
+#include <string.h>
 #include "global.h"
 #include "proto.h"
 #include "getopt.h"

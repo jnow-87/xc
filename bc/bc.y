@@ -30,9 +30,11 @@
        
 *************************************************************************/
 
+#include <string.h>
 #include "bcdefs.h"
 #include "global.h"
 #include "proto.h"
+
 %}
 
 %start program

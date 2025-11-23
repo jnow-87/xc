@@ -29,6 +29,7 @@
 *************************************************************************/
 
 
+#include <string.h>
 #include "bcdefs.h"
 #ifndef VARARGS
 #include <stdarg.h>

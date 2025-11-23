@@ -531,7 +531,7 @@ execute ()
       case '~' : /* raise */
 	if (check_stack(2))
 	  {
-	    bc_bitnot (ex_stack->s_next->s_num, 0);
+	    bc_bitnot (&ex_stack->s_next->s_num, 0);
 	    pop();
 	    pop();
 	    push_num (ex_stack->s_next->s_num);
